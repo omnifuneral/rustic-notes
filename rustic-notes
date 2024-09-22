@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+
+import os
+from datetime import datetime
+
+# Define the directory for storing notes
+NOTE_DIR = os.path.expanduser("~/rustic-notes/notes")
+os.makedirs(NOTE_DIR, exist_ok=True)
+
+# Save a note with optional tags
+def save_note(content, tags=None):
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"{NOTE_DIR}/{timestamp}.txt"
+    with open(filename, 'w') as file:
+        file.write(f"Tags: {', '.join(tags) if tags else 'None'}\n")
+        file.write(f"Date: {timestamp}\n\n")
+        file.write(content)
+    print(f"Note saved as {filename}")
+
+# List all notes with clean formatting
+def list_notes():
+    files = sorted(os.listdir(NOTE_DIR), reverse=True)
+    if not files:
+        print("No notes found.")
+        return
+
+    print(f"{'ID':<4} {'Tags':<30} {'Preview':<50} {'Date'}")
+    print("=" * 100)
+    for i, filename in enumerate(files):
+        with open(f"{NOTE_DIR}/{filename}", 'r') as file:
+            lines = file.readlines()
+            tags = lines[0].strip().replace("Tags: ", "")
+            preview = lines[3][:50] + "..." if len(lines) > 3 else "No content"
+            date = lines[1].strip().replace("Date: ", "")
+            print(f"{i + 1:<4} {tags:<30} {preview:<50} {date}")
+
+# Read a specific note by ID with formatting
+def read_note(note_id):
+    files = sorted(os.listdir(NOTE_DIR), reverse=True)
+    try:
+        filename = files[int(note_id) - 1]
+        with open(f"{NOTE_DIR}/{filename}", 'r') as file:
+            lines = file.readlines()
+            tags = lines[0].strip().replace("Tags: ", "")
+            date = lines[1].strip().replace("Date: ", "")
+            print(f"[Note {note_id}]")
+            print(f"Tags: {tags}")
+            print(f"Date: {date}")
+            print("-" * 40)
+            print(''.join(lines[3:]))
+    except (IndexError, ValueError):
+        print("Invalid note ID.")
+
+# Delete a note by ID
+def delete_note(note_id):
+    files = sorted(os.listdir(NOTE_DIR), reverse=True)
+    try:
+        filename = files[int(note_id) - 1]
+        os.remove(f"{NOTE_DIR}/{filename}")
+        print(f"Note {note_id} deleted.")
+    except (IndexError, ValueError):
+        print("Invalid note ID.")
+
+# Search notes by keyword, with default tag search and optional full content search
+def search_notes(keyword, full_search=False):
+    files = sorted(os.listdir(NOTE_DIR), reverse=True)
+    found = False
+    for filename in files:
+        with open(f"{NOTE_DIR}/{filename}", 'r') as file:
+            lines = file.readlines()
+            tags = lines[0].strip().replace("Tags: ", "")
+            content = ''.join(lines[3:])
+
+            # Default to searching only tags, with an option for full content search
+            if keyword.lower() in tags.lower() or (full_search and keyword.lower() in content.lower()):
+                print(f"Found in {filename}:")
+                print(content)
+                found = True
+    if not found:
+        print(f"No notes containing '{keyword}' found.")
+
+# Display help message for available commands
+def display_help():
+    print("""
+    Usage: rustic-notes [command] [arguments]
+    
+    Commands:
+    add               Add a new note
+    view              View all notes
+    read [id]         Read a note by ID
+    delete [id]       Delete a note by ID
+    search [keyword]  Search for notes by keyword (in tags by default, with --full for full content search)
+    """)
+
+# Main CLI logic
+def main():
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: rustic-notes [add|view|read|delete|search|help]")
+        return
+
+    command = sys.argv[1].lower()
+
+    if command == "add":
+        content = input("Enter note content: ")
+        tags = input("Enter tags (comma-separated, optional): ").split(',')
+        tags = [tag.strip() for tag in tags if tag.strip()]  # Clean up tags
+        save_note(content, tags)
+    elif command == "view":
+        list_notes()
+    elif command == "read":
+        if len(sys.argv) < 3:
+            print("Please specify a note ID to read.")
+        else:
+            read_note(sys.argv[2])
+    elif command == "delete":
+        if len(sys.argv) < 3:
+            print("Please specify a note ID to delete.")
+        else:
+            delete_note(sys.argv[2])
+    elif command == "search":
+        if len(sys.argv) < 3:
+            print("Please specify a keyword to search.")
+        else:
+            keyword = sys.argv[2]
+            full_search = "--full" in sys.argv
+            search_notes(keyword, full_search)
+    elif command in ["help", "--help"]:
+        display_help()
+    else:
+        print(f"Unknown command: {command}")
+
+if __name__ == "__main__":
+    main()
+
